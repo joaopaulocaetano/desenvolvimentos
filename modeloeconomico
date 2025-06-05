@@ -1,0 +1,67 @@
+import matplotlib.pyplot as plt
+import numpy as np
+import pandas as pd
+
+# Configuração inicial para as regiões brasileiras
+regions = ["Norte", "Nordeste", "Centro-Oeste", "Sudeste", "Sul"]
+
+# Parâmetros hipotéticos iniciais por região
+initial_conditions = {
+    "Norte": {"P": 18e6, "K": 150e9, "theta": 0.75, "infra": 0.6, "H": 0.55},
+    "Nordeste": {"P": 57e6, "K": 400e9, "theta": 0.7, "infra": 0.5, "H": 0.5},
+    "Centro-Oeste": {"P": 16e6, "K": 350e9, "theta": 0.85, "infra": 0.7, "H": 0.65},
+    "Sudeste": {"P": 90e6, "K": 1.2e12, "theta": 0.95, "infra": 0.9, "H": 0.8},
+    "Sul": {"P": 30e6, "K": 600e9, "theta": 0.9, "infra": 0.85, "H": 0.75},
+}
+
+# Função de produção com múltiplas restrições
+def compute_output(K, L, H, Infra, theta, nu=4, lambda_=20):
+    cap_limit = K / nu
+    labor_limit = L / lambda_ / H
+    infra_limit = Infra * 1e10  # conversão arbitrária
+    return theta * min(cap_limit, labor_limit, infra_limit)
+
+# Simulação de 10 anos
+years = np.arange(2025, 2035)
+sim_results = {region: [] for region in regions}
+
+for region in regions:
+    P = initial_conditions[region]["P"]
+    K = initial_conditions[region]["K"]
+    theta = initial_conditions[region]["theta"]
+    infra = initial_conditions[region]["infra"]
+    H = initial_conditions[region]["H"]
+    pop_growth = 0.01
+    dep_rate = 0.05
+    invest_rate = 0.15
+    L_part = 0.55  # participação da força de trabalho
+    for year in years:
+        L = P * L_part
+        Y = compute_output(K, L, H, infra, theta)
+        I = Y * invest_rate
+        K = (1 - dep_rate) * K + I
+        P = P * (1 + pop_growth)
+        sim_results[region].append({"Ano": year, "Produto": Y, "Capital": K, "População": P})
+
+# Converter para DataFrame e plotar
+df_all = []
+for region in regions:
+    df_region = pd.DataFrame(sim_results[region])
+    df_region["Região"] = region
+    df_all.append(df_region)
+
+df_final = pd.concat(df_all)
+
+# Plotando Produto por Região
+plt.figure(figsize=(12, 6))
+for region in regions:
+    plt.plot(df_final[df_final["Região"] == region]["Ano"],
+             df_final[df_final["Região"] == region]["Produto"] / 1e9,
+             label=region)
+plt.title("Simulação do Produto Regional (em bilhões de R$)")
+plt.xlabel("Ano")
+plt.ylabel("Produto (R$ bilhões)")
+plt.legend()
+plt.grid(True)
+plt.tight_layout()
+plt.show()
